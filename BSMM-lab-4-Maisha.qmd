@@ -1,0 +1,526 @@
+---
+title: "BSMM-lab-4"
+subtitle: "BSMM 8740 Fall 2023"
+author: "Maisha Farzana"
+date: "25 Oct 2023"
+format: html
+editor: visual
+self-contained: true
+---
+
+::: callout-note
+## REMINDER:
+
+Be sure to edit this document (see above) to include your name (and the date)
+:::
+
+## Setup
+
+Load packages and data:
+
+```{r load-pkg-data}
+#| message: false
+boston <- ISLR2::Boston
+```
+
+## Exercises
+
+### Exercise 1
+
+```{r}
+library(tidyverse)  # for data wrangling + visualization
+library(tidymodels) # for modeling
+library(knitr)      # for pretty printing of tables
+```
+
+```{r}
+boston <- ISLR2::Boston
+```
+
+```{r}
+# Load the necessary libraries if not already loaded
+library(tidyverse)
+library(tidymodels)
+library(MASS)  # Load the MASS package for the Boston dataset
+
+# Load the Boston dataset
+data(Boston)
+
+# Create the scatter plot
+plot(Boston$lstat, Boston$medv, xlab = "Lower Status of the Population (lstat)", ylab = "Median Value of Owner-Occupied Homes (medv)", main = "Scatter Plot of medv vs lstat")
+
+# Fit the linear regression model
+model <- lm(medv ~ lstat, data = Boston)
+
+# Save the model for later use
+assign("my_model", model)
+
+# Summary of the model
+summary(model)
+```
+
+The intercept and the coefficient of `lstat` in this model are: intercept = \_34.55384\_; coefficient = \_-0.95005\_
+
+### Exercise 2
+
+Are there any overly influential observations in this dataset? **No**
+
+```{r}
+# Load the necessary libraries if not already loaded
+library(tidyverse)
+library(tidymodels)
+library(MASS)
+
+# Load the Boston dataset
+data(Boston)
+
+# Fit the linear regression model
+model <- lm(medv ~ lstat, data = Boston)
+
+# Create a new data frame with 'lstat' values for prediction
+new_data <- tibble(lstat = c(5, 10, 15, 20))
+
+# Use the predict function to get confidence intervals
+prediction <- predict(model, new_data, interval = "confidence")
+
+# Combine the predictions with 'lstat' values and create a summary table
+summary_table <- cbind(new_data, prediction)
+
+# Rename columns for clarity
+colnames(summary_table) <- c("lstat", "fit", "lwr", "upr")
+
+# Display the summary table
+print(summary_table)
+
+# Check model assumptions using the "car" package
+library(car)
+linear_model_check <- linearHypothesis(model, c("lstat = 0"))
+qqPlot(model, id = 0.05)
+influencePlot(model)
+```
+
+```{r}
+# Calculate Cook's distance for each observation
+cooksd <- cooks.distance(model)
+
+# Create a data frame with Cook's distance and observation number
+cooksd_df <- data.frame(Observation = 1:length(cooksd), CooksDistance = cooksd)
+
+# Identify observations with high Cook's distance (typically values significantly greater than 1)
+outliers <- cooksd_df[cooksd_df$CooksDistance > 1, ]
+
+# Display the observations with high Cook's distance
+print(outliers)
+
+```
+
+### Exercise 3
+
+Which predictors in this dataset might be redundant for predicting `medv`? **No**
+
+```{r}
+# Load the necessary libraries if not already loaded
+library(tidyverse)
+library(MASS)
+
+# Load the Boston dataset
+data(Boston)
+
+# Fit a multiple linear regression model with all predictors
+model <- lm(medv ~ ., data = Boston)
+
+# Use the "car" package to calculate VIF
+library(car)
+vif_results <- vif(model)
+
+# Identify predictors with high VIF
+high_vif_predictors <- names(vif_results[vif_results > 10])
+
+# Display the predictors with high VIF
+print(high_vif_predictors)
+```
+
+### Exercise 4
+
+Which model returns the (approximately) correct dependence of demand on price, as given in the data generation process?
+
+lm(demand0 \~ price0) or lm(demand1 \~ price1) ? - lm(demand1 \~ price1)
+
+```{r}
+# Load necessary libraries if not already loaded
+library(tidyverse)
+
+# Generate dat0 dataset
+set.seed(1966)
+dat0 <- tibble::tibble(
+  price0 = 10 + rnorm(500),
+  demand0 = 30 - (price0 + rnorm(500)),
+  unobserved0 = 0.45 * price0 + 0.77 * demand0 + rnorm(500)
+)
+
+# Fit a linear regression model for dat0
+model0 <- lm(demand0 ~ price0, data = dat0)
+
+# Plot the data with the linear regression line
+dat0 %>% ggplot(aes(x = price0, y = demand0)) +
+  geom_point() +
+  geom_abline(
+    intercept = coef(model0)[1],  # Intercept from the model
+    slope = coef(model0)[2],      # Slope from the model
+    color = "red"
+  ) +
+  labs(title = "dat0: Linear Regression of demand0 ~ price0")
+
+```
+
+```{r}
+# Generate dat1 dataset
+set.seed(1966)
+dat1 <- tibble::tibble(
+  unobserved1 = rnorm(500),
+  price1 = 10 + unobserved1 + rnorm(500),
+  demand1 = 23 - (0.5 * price1 + unobserved1 + rnorm(500))
+)
+
+# Fit a linear regression model for dat1
+model1 <- lm(demand1 ~ price1, data = dat1)
+
+# Plot the data with the linear regression line
+dat1 %>% ggplot(aes(x = price1, y = demand1)) +
+  geom_point() +
+  geom_abline(
+    intercept = coef(model1)[1],  # Intercept from the model
+    slope = coef(model1)[2],      # Slope from the model
+    color = "red"
+  ) +
+  labs(title = "dat1: Linear Regression of demand1 ~ price1")
+
+
+```
+
+```{r}
+# Fit a linear regression model for dat0
+model0 <- lm(demand0 ~ price0, data = dat0)
+
+# Extract the coefficient of the 'price0' predictor from the model
+slope0 <- coef(model0)["price0"]
+
+# Print the slope of the demand curve in dat0
+cat("The slope of the demand curve in dat0 is approximately:", round(slope0, 2))
+
+```
+
+```{r}
+# Fit a linear regression model for dat1
+model1 <- lm(demand1 ~ price1, data = dat1)
+
+# Extract the coefficient of the 'price1' predictor from the model
+slope1 <- coef(model1)["price1"]
+
+# Print the slope of the demand curve in dat1
+cat("The slope of the demand curve in dat1 is approximately:", round(slope1, 2))
+```
+
+### Exercise 5
+
+After controling for the unobservable covariates, hich model now returns the (approximately) correct dependence of demand on price, as given in the data generation process?
+
+lm(demand0 \~ price0 + unobserved0) or lm(demand1 \~ price1 + unobserved1) ?-lm(demand1 \~ price1 + unobserved1)
+
+What can you conclude from these exercises 4 and 5?- I conclude that including the formerly unobservable variables as observable variables in the linear regression models improves the models' accuracy and alignment with the data generation process.
+
+```{r}
+set.seed(1966)
+dat0 <- tibble::tibble(
+  price0 = 10 + rnorm(500),
+  demand0 = 30 - (price0 + rnorm(500)),
+  unobserved0 = 0.45 * price0 + 0.77 * demand0 + rnorm(500)
+)
+
+
+```
+
+```{r}
+# Fit a linear regression model for dat0 with observable variables
+model0_observed <- lm(demand0 ~ price0 + unobserved0, data = dat0)
+
+# Extract the coefficient of the 'price0' predictor from the model
+slope0_observed <- coef(model0_observed)["price0"]
+
+# Print the slope of the demand curve in dat0 with observable variables
+cat("The slope of the demand curve in dat0 with observable variables is approximately:", round(slope0_observed, 2))
+```
+
+```{r}
+set.seed(1966)
+dat1 <- tibble::tibble(
+  unobserved1 = rnorm(500),
+  price1 = 10 + unobserved1 + rnorm(500),
+  demand1 = 23 - (0.5 * price1 + unobserved1 + rnorm(500))
+)
+```
+
+```{r}
+# Fit a linear regression model for dat1 with observable variables
+model1_observed <- lm(demand1 ~ price1 + unobserved1, data = dat1)
+
+# Extract the coefficient of the 'price1' predictor from the model
+slope1_observed <- coef(model1_observed)["price1"]
+
+# Print the slope of the demand curve in dat1 with observable variables
+cat("The slope of the demand curve in dat1 with observable variables is approximately:", round(slope1_observed, 2))
+```
+
+### Exercise 6
+
+```{r}
+#| echo: true
+#| eval: false
+dat <- 
+  readxl::read_xlsx("data/2023 FE Guide for DOE-release dates before 7-28-2023.xlsx")
+```
+
+How many predictor variables are there in `cars_23` ?- 3
+
+```{r}
+install.packages("janitor")
+```
+
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(janitor)
+
+dat <- read_xlsx("data/2023 FE Guide for DOE-release dates before 7-28-2023.xlsx")
+
+# Select columns
+cars_23 <- dat %>%
+  select(
+    "Comb FE (Guide) - Conventional Fuel",
+    "Eng Displ",
+    `# Cyl`,
+    Transmission,
+    `# Gears`,
+    `Air Aspiration Method Desc`,
+    `Regen Braking Type Desc`,
+    `Batt Energy Capacity (Amp-hrs)`,
+    `Drive Desc`,
+    `Fuel Usage Desc - Conventional Fuel`,
+    `Cyl Deact?`,
+    `Var Valve Lift?`
+  ) %>%
+  clean_names()
+```
+
+```{r}
+#Perform a quick check of the data
+library(DataExplorer)
+
+introduce(cars_23)
+plot_missing(cars_23)
+```
+
+```{r}
+#Clean and modify the data
+cars_23 <- cars_23 %>%
+  mutate(
+    comb_fe_guide_conventional_fuel = as.integer(comb_fe_guide_conventional_fuel),
+    number_cyl = as.integer(number_cyl),
+    number_gears = as.integer(number_gears),
+    batt_energy_capacity_amp_hrs = replace_na(batt_energy_capacity_amp_hrs, 0),
+    regen_braking_type_desc = replace_na(regen_braking_type_desc, ""),
+    transmission = as.factor(transmission),
+    air_aspiration_method_desc = as.factor(air_aspiration_method_desc),
+    regen_braking_type_desc = as.factor(regen_braking_type_desc),
+    drive_desc = as.factor(drive_desc),
+    fuel_usage_desc_conventional_fuel = as.factor(fuel_usage_desc_conventional_fuel),
+    cyl_deact = as.factor(cyl_deact),
+    var_valve_lift = as.factor(var_valve_lift)
+  )
+```
+
+```{r}
+#Prepare a recipe for processing the data
+library(recipes)
+
+car_recipe <- recipes::recipe(comb_fe_guide_conventional_fuel ~ ., data = cars_23) %>%
+  recipes::step_center(all_numeric()) %>%
+  recipes::step_scale(all_numeric()) %>%
+  recipes::step_dummy(all_factor())
+
+# Fit the recipe to the data
+car_recipe_fit <- car_recipe %>%
+  recipes::prep()
+
+# Check the number of predictor variables
+num_predictor_variables <- car_recipe_fit$steps %>%
+  purrr::map_lgl(~ !is.null(.)) %>%
+  sum()
+
+num_predictor_variables
+```
+
+### Exercise 7
+
+After these two steps how many columns are in the data? Why does this differ from the last step?
+
+After these two steps how many columns are in the data? Why does this differ from the last step?- The number of columns in the training and test data will differ from the previous step due to the creation of dummy variables for factor variables in the preprocessing step. Dummy variables are introduced for each level of the factor variables, which increases the total number of columns in the data. The training and test data will have more columns than the original dataset, reflecting the encoding of factor variables into binary indicators.
+
+```{r}
+set.seed(1966)
+
+# Sample 75% of the rows of the cars_23 dataset to make the training set
+train <- cars_23 %>% 
+  # Make an ID column for use as a key
+  tibble::rowid_to_column("ID") %>% 
+  # Sample the rows
+  dplyr::sample_frac(0.75)
+
+# Remove the training dataset from the original dataset to make the test set
+test  <- 
+  dplyr::anti_join(
+    cars_23 %>% tibble::rowid_to_column("ID"), # Add a key column to the original data
+    train,
+    by = 'ID'
+  )
+
+# Drop the ID column from training and test datasets
+train <- train %>% dplyr::select(-ID)
+test <- test %>% dplyr::select(-ID)
+```
+
+```{r}
+# Prepare the recipe using the training data
+car_recipe_fit <- car_recipe %>%
+  recipes::prep(data = train)
+
+# Apply the prepared recipe to the training and test data
+baked_training_data <- car_recipe_fit %>%
+  recipes::bake(new_data = train)
+
+baked_test_data <- car_recipe_fit %>%
+  recipes::bake(new_data = test)
+
+```
+
+```{r}
+# Number of columns in the baked training data
+num_columns_training <- ncol(baked_training_data)
+
+# Number of columns in the baked test data
+num_columns_test <- ncol(baked_test_data)
+
+# Print the results
+cat("Number of columns in the baked training data:", num_columns_training, "\n")
+cat("Number of columns in the baked test data:", num_columns_test, "\n")
+
+```
+
+### Exercise 8
+
+The RMSE for the un-tuned model is \_0.2428367\_.
+
+```{r}
+untuned_xgb <-
+  xgboost::xgboost(
+    data = train_baked %>% dplyr::select(-comb_fe_guide_conventional_fuel) %>% as.matrix(), 
+    label = train_baked %>% dplyr::select(comb_fe_guide_conventional_fuel) %>% as.matrix(),
+    nrounds = 1000,
+    objective = "reg:squarederror",
+    early_stopping_rounds = 3,
+    max_depth = 6,
+    eta = .25
+    , verbose = FALSE
+  )
+# create predictions using the test data and the fitted model
+yhat <- predict(
+  untuned_xgb
+  , test_baked %>% 
+    dplyr::select(-comb_fe_guide_conventional_fuel) %>% 
+    as.matrix() 
+)
+library(caret)
+
+#Extract the true outcomes (y) from the test data
+y <- test_baked$comb_fe_guide_conventional_fuel
+
+#Calculate RMSE using caret::postResample
+rmse <- sqrt(mean((y - yhat)^2))
+rmse
+```
+
+### Exercise 9
+
+Is the tuned model better than the un-tuned model? If better, how much has the RMSE improved (in %)..- 1.07%
+
+```{r}
+#create hyperparameter grid
+hyper_grid <- expand.grid(max_depth = seq(3, 6, 1), eta = seq(.2, .35, .01))  
+
+# initialize our metric variables
+xgb_train_rmse <- NULL
+xgb_test_rmse  <- NULL
+
+for (j in 1:nrow(hyper_grid)) {
+  set.seed(123)
+  m_xgb_untuned <- xgboost::xgb.cv(
+    data = train_baked %>% dplyr::select(-comb_fe_guide_conventional_fuel) %>% as.matrix(), 
+    label = train_baked %>% dplyr::select(comb_fe_guide_conventional_fuel) %>% as.matrix(),
+    nrounds = 1000,
+    objective = "reg:squarederror",
+    early_stopping_rounds = 3,
+    nfold = 5,
+    max_depth = hyper_grid$max_depth[j],
+    eta = hyper_grid$eta[j],
+    verbose = FALSE
+  )
+  
+  xgb_train_rmse[j] <- m_xgb_untuned$evaluation_log$train_rmse_mean[m_xgb_untuned$best_iteration]
+  xgb_test_rmse[j] <- m_xgb_untuned$evaluation_log$test_rmse_mean[m_xgb_untuned$best_iteration]
+}    
+
+best <- hyper_grid[which(xgb_test_rmse == min(xgb_test_rmse)),]; best # there may be ties
+
+# Extract the best hyperparameters
+best_max_depth <- best$max_depth
+best_eta <- best$eta
+
+# Re-run the model with the best parameters
+set.seed(1966)
+tuned_xgb <- xgboost(
+  data = train_baked %>% dplyr::select(-comb_fe_guide_conventional_fuel) %>% as.matrix(),
+  label = train_baked %>% dplyr::select(comb_fe_guide_conventional_fuel) %>% as.matrix(),
+  nrounds = 1000,
+  objective = "reg:squarederror",
+  early_stopping_rounds = 3,
+  max_depth = best_max_depth,
+  eta = best_eta,
+  verbose = FALSE
+)
+
+# Create predictions using the test data and the tuned model
+yhat_tuned <- predict(
+  tuned_xgb,
+  test_baked %>% dplyr::select(-comb_fe_guide_conventional_fuel) %>% as.matrix()
+)
+
+# Calculate RMSE for the tuned model
+rmse_tuned <- sqrt(mean((y - yhat_tuned)^2))
+
+# Compare the RMSE of the tuned model with the RMSE of the un-tuned model
+improvement_percentage <- ((rmse - rmse_tuned) / rmse) * 100
+
+cat("RMSE for the tuned model:", rmse_tuned, "\n")
+cat("RMSE improvement percentage:", improvement_percentage, "%\n")
+```
+
+### Exercise 10
+
+Per this model, what is the most important feature for predicting fuel efficiency?- eng.displ
+
+```{r}
+important <- xgboost::xgb.importance(model = tuned_xgb) 
+top_10_importance<-head(important,10)
+xgboost::xgb.plot.importance(importance_matrix = top_10_importance)
+```
